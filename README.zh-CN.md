@@ -221,6 +221,20 @@ node probe/verify-plugin.mjs
 
 机器专属路径**从不入库**：所有脚本都从环境变量取，缺了会明确告诉你该设什么。
 
+## 发版
+
+发版由 [`.github/workflows/publish.yml`](.github/workflows/publish.yml) 自动化：推送 `v*` tag 即发布到 npm。
+
+```sh
+npm version patch        # 或 minor / major —— 会改 package.json 并创建 tag
+git push --follow-tags   # tag 触发 workflow
+```
+
+workflow 会校验 tag 与 `package.json` 一致、跑一遍离线自检，然后带 provenance 发布。
+它需要仓库密钥 `NPM_TOKEN` —— 一个**勾选了「Bypass 2FA」的 Granular Access Token**
+（本 npm 账号开了 2FA；普通 token 会在 CI 里被拒 `E403`）。也可以在 Actions 页面手动触发，
+默认是 `--dry-run`。
+
 ## 贡献
 
 欢迎提 Issue 与 PR。开 PR 前请先跑上面的自检，并保持**零依赖**约束 ——
