@@ -1,0 +1,25 @@
+# dsh-bridge-plugin —— 把 dsh-bridge 的本地浏览器桥接作为 DSH 原生工具暴露。
+#
+# 本插件自带的 bundle patch：插入一行 loader 条目。安装方式与 dsh-free-search /
+# dsh-mnemon 完全一致（package.json 的 dsh.bundle.patch 指向本文件），因此
+# **不需要**手改 profile 的 cordis.patch.yml。
+#
+# 各字段含义：
+#   id           —— loader 行标识（插件内唯一即可）
+#   name         —— 包名（dsh plugin add / 离线脚本按此名解析）
+#   config       —— 会被插件的 Config schema 校验并补默认值。
+#
+# 若你的 dsh-bridge 仓库不在 D:\claude-code\dsh-bridge，改下面的 cwd；
+# 若不用 uv（例如已 pip install 进某个 venv），改 command/args 指向裸
+# `dsh-bridge` 可执行文件即可。
+- insert:
+    - id: dsh-bridge-plugin
+      name: dsh-bridge-plugin
+      config:
+        command: uv
+        args:
+          - run
+          - --no-sync
+          - dsh-bridge
+        cwd: D:\claude-code\dsh-bridge
+        toolCallTimeoutMs: 180000
