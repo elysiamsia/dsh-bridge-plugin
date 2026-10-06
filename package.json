@@ -1,56 +1,63 @@
 {
-    "name":  "dsh-bridge-plugin",
-    "version":  "0.1.0",
-    "description":  "DeepSeek Harness plugin: expose the local dsh-bridge browser bridge (Python/Playwright, 4 web AIs) as native DSH tools. PoC registers ask_deepseek; the bridge itself is reused over MCP stdio, not reimplemented.",
-    "type":  "module",
-    "main":  "lib/index.js",
-    "exports":  {
-                    ".":  "./lib/index.js",
-                    "./package.json":  "./package.json"
-                },
-    "files":  [
-                  "lib/index.js",
-                  "lib/mcp-client.js",
-                  "cordis.patch.yml"
-              ],
-    "keywords":  [
-                     "deepseek-harness",
-                     "dsh",
-                     "dsh-plugin",
-                     "dsh-bridge",
-                     "mcp",
-                     "deepseek",
-                     "playwright"
-                 ],
-    "license":  "MIT",
-    "engines":  {
-                    "node":  "\u003e=20"
-                },
-    "peerDependencies":  {
-                             "@deepseek-ai/schemastery":  "^3.18.4",
-                             "@deepseek-ai/dsh-tools":  "*"
-                         },
-    "peerDependenciesMeta":  {
-                                 "@deepseek-ai/schemastery":  {
-                                                                  "optional":  true
-                                                              },
-                                 "@deepseek-ai/dsh-tools":  {
-                                                                "optional":  true
-                                                            }
-                             },
-    "dsh":  {
-                "bundle":  {
-                               "patch":  "./cordis.patch.yml"
-                           },
-                "engines":  {
-                                "dsh":  "\u003e=0.1.7-rc.1"
-                            }
-            },
-    "publishConfig":  {
-                          "access":  "public"
-                      },
-    "homepage":  "https://github.com/elysiamsia/dsh-bridge",
-    "bugs":  {
-                 "url":  "https://github.com/elysiamsia/dsh-bridge/issues"
-             }
+  "name": "dsh-bridge-plugin",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness plugin: expose the local dsh-bridge browser bridge (Python/Playwright, 4 web AIs) as native DSH tools. PoC registers ask_deepseek; the bridge itself is reused over MCP stdio, not reimplemented.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/mcp-client.js",
+    "cordis.patch.yml",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bridge",
+    "mcp",
+    "deepseek",
+    "playwright"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.4",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "engines": {
+      "dsh": ">=0.1.7-rc.1"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/elysiamsia/dsh-bridge-plugin",
+  "bugs": {
+    "url": "https://github.com/elysiamsia/dsh-bridge-plugin/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elysiamsia/dsh-bridge-plugin.git"
+  },
+  "author": "elysiamsia"
 }

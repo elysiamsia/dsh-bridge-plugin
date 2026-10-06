@@ -8,9 +8,9 @@
  */
 import { spawn } from 'node:child_process'
 
-const CWD = 'D:\\claude-code\\dsh-bridge'
-const COMMAND = 'uv'
-const ARGS = ['run', '--no-sync', 'dsh-bridge']
+const CWD = process.env.DSH_BRIDGE_REPO ?? process.cwd()
+const COMMAND = process.env.DSH_BRIDGE_COMMAND ?? 'uv'
+const ARGS = (process.env.DSH_BRIDGE_ARGS ?? 'run --no-sync dsh-bridge').split(' ')
 
 const child = spawn(COMMAND, ARGS, {
   cwd: CWD,

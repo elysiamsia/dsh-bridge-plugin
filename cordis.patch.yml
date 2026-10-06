@@ -1,25 +1,34 @@
-# dsh-bridge-plugin —— 把 dsh-bridge 的本地浏览器桥接作为 DSH 原生工具暴露。
+# dsh-bridge-plugin — bundle patch（由 package.json 的 dsh.bundle.patch 声明）。
 #
-# 本插件自带的 bundle patch：插入一行 loader 条目。安装方式与 dsh-free-search /
-# dsh-mnemon 完全一致（package.json 的 dsh.bundle.patch 指向本文件），因此
-# **不需要**手改 profile 的 cordis.patch.yml。
+# 本文件负责把插件的 loader 行插进 DSH 的组合树。安装方式与 dsh-free-search /
+# dsh-mnemon 一致，**不需要**手改 profile 的 cordis.patch.yml。
 #
-# 各字段含义：
-#   id           —— loader 行标识（插件内唯一即可）
-#   name         —— 包名（dsh plugin add / 离线脚本按此名解析）
-#   config       —— 会被插件的 Config schema 校验并补默认值。
+# ──────────────────────────────────────────────────────────────────────
+# ⚠️ 关于下面的 config：这里只放**与机器无关的默认值**。
 #
-# 若你的 dsh-bridge 仓库不在 D:\claude-code\dsh-bridge，改下面的 cwd；
-# 若不用 uv（例如已 pip install 进某个 venv），改 command/args 指向裸
-# `dsh-bridge` 可执行文件即可。
+#   发布包里**不能**出现机器专属路径（写了对别人就没用）。所以默认假定
+#   `dsh-bridge` 可执行文件已在 PATH 上 —— 例如用以下任一方式安装过：
+#
+#     uv tool install .            # 在 dsh-bridge 源码目录里执行
+#     pipx install .
+#
+#   若你是**在源码目录里用 uv run 启动**（开发场景最常见），请在你**自己机器**的
+#   profile `cordis.patch.yml`（`~/.dsh/profiles/<profile>/cordis.patch.yml`）里
+#   追加一条覆盖（同一 id 的 config 会被整体替换）：
+#
+#     - id: dsh-bridge-plugin
+#       config:
+#         command: uv
+#         args: [run, --directory, /abs/path/to/dsh-bridge, dsh-bridge]
+#
+#   README 的「Configuration」一节有完整说明。
+# ──────────────────────────────────────────────────────────────────────
 - insert:
     - id: dsh-bridge-plugin
       name: dsh-bridge-plugin
       config:
-        command: uv
-        args:
-          - run
-          - --no-sync
-          - dsh-bridge
-        cwd: D:\claude-code\dsh-bridge
+        # 假定 dsh-bridge 在 PATH 上；源码目录用法请在本机 profile 覆盖（见上）
+        command: dsh-bridge
+        args: []
+        # 真站 ask 需要驱动浏览器（含浏览器冷启动），给足超时
         toolCallTimeoutMs: 180000

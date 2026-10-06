@@ -47,25 +47,25 @@ const stubClient = (routeTaskResult) => ({
 
 console.log('=== 1. 纯函数层 ===')
 
-check('resolveConfig 空配置 → 全部默认值', () => {
+check('resolveConfig 空配置 → 全部默认值（**不含机器专属路径**）', () => {
   const c = resolveConfig(undefined)
-  assert(c.command === 'uv', `command=${c.command}`)
-  // 🌸 默认 args 对齐已验证可用的 `.mcp.json` 形式（`--directory` 让 uv 自己找项目）
-  assert(
-    c.args.join(' ') === 'run --directory D:/claude-code/dsh-bridge dsh-bridge',
-    `args=${c.args.join(' ')}`,
-  )
+  // 🌸 发布包的默认值必须与机器无关：假定 dsh-bridge 在 PATH 上，参数为空
+  assert(c.command === 'dsh-bridge', `command=${c.command}`)
+  assert(c.args.length === 0, `args 应为空，实际 ${c.args.join(' ')}`)
+  assert(c.cwd === '', `cwd 应为空字符串，实际 ${JSON.stringify(c.cwd)}`)
   assert(c.toolCallTimeoutMs === 180000, `timeout=${c.toolCallTimeoutMs}`)
+  // 断言里**不能**出现任何盘符 / 绝对路径
+  assert(
+    !/[A-Za-z]:[\\/]/.test(c.command + c.args.join(' ') + c.cwd),
+    `默认值里出现了本地路径：${JSON.stringify(c)}`,
+  )
 })
 
 check('resolveConfig 用户覆盖生效', () => {
   const c = resolveConfig({ command: 'python', toolCallTimeoutMs: 5000 })
   assert(c.command === 'python', 'command 未覆盖')
   assert(c.toolCallTimeoutMs === 5000, 'timeout 未覆盖')
-  assert(
-    c.args.join(' ') === 'run --directory D:/claude-code/dsh-bridge dsh-bridge',
-    '未覆盖的字段应保留默认值',
-  )
+  assert(c.args.length === 0, '未覆盖的字段应保留默认值')
 })
 
 check('resolveConfig 非法配置要响亮', () => {
@@ -215,12 +215,20 @@ await checkAsync('读不到该站 verify 状态 → 拒绝', async () => {
   assert(threw, '缺条目时必须拒绝')
 })
 
-console.log('\n=== 3. 桥接层（只读：仅 tools/list）===')
+console.log('\n=== 3. 桥接层（只读：仅 site_state）===')
+
+if (!process.env.DSH_BRIDGE_REPO && !process.env.DSH_BRIDGE_COMMAND) {
+  // 🌸 发布包不含机器专属路径，所以这一段必须由环境变量驱动；
+  //    未提供时**明确跳过**（前两层是自包含的，仍然有效）。
+  console.log('  ⏭ 跳过：未设置 DSH_BRIDGE_REPO / DSH_BRIDGE_COMMAND')
+  console.log('     需要真实桥接验证时：$env:DSH_BRIDGE_REPO = "<dsh-bridge 源码目录>"')
+} else {
 
 const client = new McpStdioClient({
-  command: 'uv',
-  args: ['run', '--no-sync', 'dsh-bridge'],
-  cwd: 'D:\\claude-code\\dsh-bridge',
+  // 🌸 桥接层真实调用需要 dsh-bridge 源码目录 —— 由环境变量给出，不写死在仓库里。
+  command: process.env.DSH_BRIDGE_COMMAND ?? 'uv',
+  args: (process.env.DSH_BRIDGE_ARGS ?? 'run --no-sync dsh-bridge').split(' '),
+  cwd: process.env.DSH_BRIDGE_REPO ?? process.cwd(),
   env: {},
   toolCallTimeoutMs: 60000,
 })
@@ -239,6 +247,8 @@ try {
 } finally {
   client.dispose()
 }
+
+} // ← 桥接层条件块结束
 
 console.log(`\n=== 结果：${failures === 0 ? '全部通过 ✅' : `${failures} 项失败 ❌`} ===`)
 process.exit(failures === 0 ? 0 : 1)

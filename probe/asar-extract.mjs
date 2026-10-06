@@ -10,7 +10,13 @@
  */
 import { readFileSync } from 'node:fs'
 
-const ASAR = 'D:\\claude-code\\dsh\\resources\\app.asar'
+// 🌸 机器专属路径由环境变量传入：DSH_ASAR=<DSH 安装目录>/resources/app.asar
+const ASAR = process.env.DSH_ASAR ?? ''
+if (!ASAR) {
+  console.error('请先设置 DSH_ASAR 指向 DSH 的 app.asar，例如：')
+  console.error('  $env:DSH_ASAR = "C:\\<DSH 安装目录>\\resources\\app.asar"')
+  process.exit(1)
+}
 
 const fd = readFileSync(ASAR)
 // asar 布局：u32(=4) | u32(headerPickleSize) | u32(headerJsonSize) | headerJson | files...

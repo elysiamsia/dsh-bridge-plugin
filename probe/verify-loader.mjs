@@ -15,8 +15,14 @@ import { pathToFileURL } from 'node:url'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-const PROFILE_DIR = 'C:\\Users\\dong\\.dsh\\profiles\\desktop'
-const PLUGIN = 'dsh-bridge-plugin'
+// 🌸 机器专属路径不写死：用 ~ 推导，profile 名可用 DSH_PROFILE 覆盖。
+const PROFILE_DIR = path.join(
+  process.env.USERPROFILE ?? process.env.HOME ?? '',
+  '.dsh',
+  'profiles',
+  process.env.DSH_PROFILE ?? 'desktop',
+)
+const PLUGIN = process.env.DSH_PLUGIN_NAME ?? 'dsh-bridge-plugin'
 
 // loader 用 profile 目录做解析基准。
 const require = createRequire(path.join(PROFILE_DIR, 'noop.js'))
