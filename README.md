@@ -28,46 +28,68 @@ DSH 宿主
                     └── MCP stdio (逐行 JSON-RPC)
 ```
 
-## 当前状态：**PoC 未跑通，已从环境卸载（2026-10-06）**
-
-诚实记录，避免下次重复踩坑：
+## 当前状态：**✅ 已跑通并安装在用（2026-10-06）**
 
 | 项 | 状态 |
 |---|---|
-| 工具实现（`ask_deepseek`） | ✅ 已实现 |
-| 离线自检 `node probe/verify-plugin.mjs` | ✅ **17/17 通过**（含真实 MCP 往返 `site_state`，拿到 `{ok:true, site:deepseek}`） |
-| loader 链路复现 `node probe/verify-loader.mjs` | ✅ 6 步全过（解析包 → patch → 入口 → 导出 → 真调 `apply()` 注册成功） |
-| 兼容性闸门（真实 semver 复现） | ✅ 3 种 runtime 版本下不兼容 peer 数 = 0（不会被 skip） |
-| **在真实 DSH 里加载** | ❌ **失败**：插件页显示该组件异常（源码判定＝Cordis fiber `phase === 'failed'`，即 `apply`/import/config 阶段抛错），工具 `ask_deepseek` 未出现在模型工具表 |
-| 失败原因 | **未确定** —— 需要宿主报错文本，但该异常在 UI 里点不开 |
+| 工具实现 | ✅ `ask_deepseek`（真站对话）+ `dsh_bridge_probe`（零依赖诊断探针） |
+| **在真实 DSH 里加载** | ✅ **成功** —— 面包屑日志走到 `APPLY-DONE`，无异常 |
+| **原生工具真调用** | ✅ `dsh_bridge_probe(echo=…)` → `probe ok=true plugin=dsh-bridge-plugin@0.2.0 echo=…`（**无 `mcp__` 前缀 = 真·原生工具**） |
+| **G20 前置闸门** | ✅ 实测生效：4 站冻结时调 `ask_deepseek` 被拒绝、**未触碰真站** |
+| 离线自检 `node probe/verify-plugin.mjs` | ✅ 全部通过（纯函数 / 注册 / 桥接 / G20 闸门） |
+| loader 链路复现 `node probe/verify-loader.mjs` | ✅ 6 步全过（解析包 → patch → 入口 → 导出 → 真调 `apply()`） |
+| 生命周期 | ✅ 重启时上一实例正确卸载（日志留 `[EFFECT-DISPOSE]`） |
 
-### ⚠️ 这次踩到并已修的两个坑（重要）
+### 🔑 上次失败的根因（已修复）
 
-1. **我引入过一次严重事故：profile 清单被写入 UTF-8 BOM**，导致 DSH 启动阶段直接崩溃
-   （`SyntaxError: Unexpected token ''` at `readProfileManifest`；见
-   `%APPDATA%\@deepseek-ai\dsh-desktop\logs\crash-*-host.log`）。
-   根因：Windows PowerShell 5.1 的 `Set-Content -Encoding UTF8` **会写 BOM**。
-   现已改用 `Write-NoBomJson`（`[System.IO.File]::WriteAllText` + `UTF8Encoding($false)`），
-   并在安装后**断言无 BOM**（`install.ps1:121-125`）。
-2. **`@deepseek-ai/dsh-tools` 在本机解析不到**（`profiles/node_modules` 下是指向 npx 缓存、
-   目标已消失的 junction）。而 `defineTool` **不是可选包装** —— 它做真正的转换：
-   `parameterSchemaSpecToJsonSchema()` / `valueSchemaSpecToJsonSchema()`。
-   本插件现有的「恒等降级」会**跳过这些转换**，是很可能的失败原因。
-   **下次应改为**：自己把参数 schema 转成标准 JSON Schema（`required` 必须是**字符串数组**），
-   `output.schema` 也写成标准 JSON Schema，从而完全不依赖 `defineTool`。
+上次（同日早些时候）插件页显示「异常」＝ Cordis fiber `phase === 'failed'`，且**拿不到报错文本**。
+
+**根因**：工具定义用了 **DSH 参数方言**（`prompt: { type:'string', required:true }`），
+却在不依赖 `defineTool` 的情况下把该方言直接交给 `ctx.tools.register()`。
+
+**修复**：把 `parameters` 与 `output.schema` 全写成**标准 JSON Schema**
+（`required` 为**字符串数组**），彻底不依赖 `@deepseek-ai/dsh-tools`（本机解析不到）。
+改完一次通过。
+
+### 🔧 诊断技法（这次解开死结的关键，值得沿用）
+
+插件在**导入期 / apply 入口 / 每一步 / 每个异常**都 `appendFileSync` 到固定日志文件，
+并记录 `ctx` 的真实形状（`ctxKeys`/`hasTools`/`hasRegister`/`hasEffect`）到
+`diag/boot.log`。⇒ **即使 fiber 失败、UI 不给原因，也能从文件读到确切失败点与完整错误栈。**
+
+### ⚠️ G20 安全闸门（本插件的重要安全网）
+
+实测发现 **内核的 `dsh_bridge/tools/ask.py` 完全不检查 G20**（`blocked` 只在
+`routing/decide.py` 的 `route_task` 决策链与 `scripts/login.py` 里生效）
+⇒ **直接调 `ask_*` 会真的发出去**，冻结期等于 **4 站账号同时吊销**。
+
+对策：本插件调 `ask_*` 前先用 `route_task`（纯逻辑、不起浏览器、不 send）读 `verify_status`，
+目标站 `blocked` 就**拒绝发送**并给出 `dsh-login` 指引；**预检本身失败也保守拒绝**。
+闸门有 4 条单元测试（stub 客户端，**绝不碰真站**）。
+
+### 已修的两个环境坑（供后来者避开）
+
+1. **profile 的 `package.json` 绝不能带 UTF-8 BOM** —— 宿主启动时直接 `JSON.parse`，
+   BOM 会 `DesktopHostFatalError` 崩溃。Windows PowerShell 5.1 的
+   `Set-Content -Encoding UTF8` **会写 BOM**；改用
+   `[System.IO.File]::WriteAllText(..., UTF8Encoding($false))`，并在写后断言无 BOM。
+2. **含中文的 `.ps1` 必须有 BOM**（与上一条**方向相反**）—— PS 5.1 无 BOM 时会按 GBK
+   解码中文 → 语法错。`install.ps1` 已带 BOM，用解析器验证过无语法错误。
 
 ## 文件
 
 | 文件 | 作用 |
 |---|---|
-| `lib/index.js` | 插件入口：`apply()` + 工具注册 + 配置校验 + 结果解析 |
+| `lib/index.js` | 插件入口：`apply()` + 工具注册 + 配置校验 + G20 闸门 + 结果解析 |
 | `lib/mcp-client.js` | 极简 MCP stdio 客户端（零外部依赖，串行化，超时，子进程清理） |
 | `cordis.patch.yml` | 插件自带的 bundle patch（由 `package.json` 的 `dsh.bundle.patch` 声明） |
+| `install.ps1` | 安装/卸载（**无 BOM 写入 + 写后断言 + 安装后真实 import 验证**） |
 | `probe/mcp-probe.mjs` | 架构探针：只验证 Node→Python→MCP 握手 + tools/list |
-| `probe/verify-plugin.mjs` | 插件自检：纯函数 / 注册 / 桥接三层（17 项） |
+| `probe/verify-plugin.mjs` | 插件自检：纯函数 / 注册 / 桥接 / G20 闸门 |
 | `probe/verify-loader.mjs` | **复现宿主 loader 的 6 步**：解析包→patch→入口→导出→真调 `apply()` |
 | `probe/verify-profile.mjs` | **profile 健康检查**：逐 bundle 复现 `loadProfileDirectory`（含 BOM 检测） |
 | `probe/asar-extract.mjs` | 从 `app.asar` 抽单个文件（读真实运行版本代码用） |
+| `probe/verify-mcp-entry.mjs` | 校验 profile 里 `mcp-dshbridge` 那条配置（BOM / YAML / 契约 / 路径） |
 | `install.ps1` | 安装/卸载脚本（离线，等效 `dsh plugin add`；**无 BOM 写入 + 写后断言**） |
 
 ## 安装
