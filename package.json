@@ -1,6 +1,6 @@
 {
   "name": "dsh-bridge-plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "DeepSeek Harness plugin: expose the local dsh-bridge browser bridge (Python/Playwright, 4 web AIs) as native DSH tools. PoC registers ask_deepseek; the bridge itself is reused over MCP stdio, not reimplemented.",
   "type": "module",
   "main": "lib/index.js",
